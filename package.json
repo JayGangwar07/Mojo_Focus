@@ -1,0 +1,24 @@
+{
+  "name": "focus",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "generate": "pwa-asset-generator public/largeLogo.png public -m src/app/manifest.json -i src/app/page.js"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^7.3.3",
+    "mongoose": "^9.6.2",
+    "next": "16.2.6",
+    "next-pwa": "^5.6.0",
+    "pwa-asset-generator": "^8.1.4",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "tailwindcss": "^4"
+  }
+}
