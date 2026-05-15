@@ -1,36 +1,141 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+## 🚀 Getting Started
 
-## Getting Started
+1.  Clone the repo: git clone https://github.com/yourusername/mojo-focus.git
+2.  Install dependencies: npm install
+3.  Set up your .env.local with your MongoDB URI.
+4.  Run the development server: npm run dev
 
-First, run the development server:
+## 📜 License
+
+MIT © [Your Name]
+"""
+
+# Save to file
+
+file_path = "README.md"
+with open(file_path, "w") as f:
+f.write(readme_content)
+
+````
+```python?code_reference&code_event_index=3
+readme_content = """# ⚡ Mojo Focus
+
+> **Productivity is a survival game. Don't let the Guillotine strike.**
+
+Mojo Focus is a high-stakes, competitive productivity PWA built for developers and students who crave urgency. It transforms your daily revision slots into a battle for "Mojo" currency. Earn points through discipline, or lose them to the ruthless **Guillotine**.
+
+---
+
+## 🎨 Design Philosophy: Neo-Brutalist
+Mojo Focus uses a **Neo-Brutalist** aesthetic—bold colors, thick black borders, and a modular bento-box layout. It's designed to be "mf" (fast), functional, and high-energy.
+
+### 🎭 The Mojo Blob (Mascot States)
+The UI is alive. Your mascot's state changes based on your performance:
+- **The King:** Top of the leaderboard.
+- **The Panic:** 5 minutes before the deadline.
+- **The Defeated:** You missed a slot. The Guillotine struck.
+- **The Chiller:** Tasks done. Time to relax.
+
+---
+
+## 🛠️ Core Mechanics
+
+### ⚡ Earning Mojo
+- **+15 Mojo:** Successfully "Sync" a 45/15 revision slot.
+- **Proof of Work:** No syncing, no Mojo.
+
+### 🪓 The Guillotine
+- **-45 Mojo:** If the clock hits **11:00 PM** and you have an open slot.
+- **High Stakes:** One failure wipes out the progress of three successful sessions.
+
+### 🏆 Wall of Shame
+- A global leaderboard where the **King** sits at the top and the **Loser** is exposed at the bottom.
+- Includes a "Recent Defeats" ticker showing live Guillotine strikes.
+
+---
+
+## 💻 Tech Stack
+
+- **Framework:** Next.js (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS
+- **Database:** MongoDB (Mongoose)
+- **Environment:** Mobile-first development via **Termux**
+
+---
+
+## 🗄️ Database Models
+
+### User
+```javascript
+{
+  username: String,
+  currentMojo: Number (indexed),
+  status: String, // STABLE, PANIC, DEFEATED
+  lastSync: Date
+}
+
+````
+
+### Slot
+
+```javascript
+{
+  userId: ObjectId,
+  topic: String,
+  isSynced: Boolean,
+  scheduledTime: Date
+}
+
+```
+
+### Shame
+
+```javascript
+{
+  userId: ObjectId,
+  username: String,
+  incidentType: String,
+  mojoLost: Number,
+  createdAt: Date (indexed)
+}
+
+```
+
+## 🚀 Getting Started
+
+1.  **Clone the repo:**
+
+```bash
+git clone [https://github.com/yourusername/mojo-focus.git](https://github.com/yourusername/mojo-focus.git)
+
+```
+
+2.  **Install dependencies:**
+
+```bash
+npm install
+
+```
+
+3.  **Setup Env:** Create a .env.local with your MONGODB_URI.
+4.  **Run Development:**
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+_Built with passion in Bareilly. Forge your future, one slot at a time._
+"""
+with open("README.md", "w") as f:
+f.write(readme_content)
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+```
+Your professional `README.md` for **Mojo Focus** is ready. It captures the neo-brutalist aesthetic, explains the high-stakes "Guillotine" mechanics, and outlines the technical architecture you're building in Termux.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+[file-tag: code-generated-file-0-1778860738630723629]
 
-## Learn More
+Since it's getting late, do you want to wrap up the **`updateMany`** logic for the 11:00 PM Guillotine strike so the app is ready for your first live session?
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
