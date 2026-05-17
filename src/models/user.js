@@ -17,7 +17,7 @@ const UserSchema = new mongoose.Schema(
     photo: String,
     status: {
       type: String,
-      enum: ['STABLE','PANIC','DEFEATED','CHILL','BANKRUPT']
+      enum: ["STABLE", "PANIC", "DEFEATED", "CHILL", "BANKRUPT", "KING"],
     },
   },
   {
