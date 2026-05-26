@@ -1,279 +1,299 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { ArrowLeft, Zap, X, Clock, AlertTriangle } from "lucide-react";
-// import connectDB from "./lib/db";
-// import { syncUser } from "@/actions/user.action";
+import { pauseSession, startSession } from "@/actions/session.action";
+import { syncUser } from "@/actions/user.action";
+import {
+  Dice5,
+  Flame,
+  Vault,
+  Trophy,
+  Timer,
+  Play,
+  Pause,
+  RotateCcw,
+} from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { SignInButton, UserButton, useUser } from "@clerk/nextjs";
+import { currentUser } from "@clerk/nextjs/server";
 
-const SlotsPage = () => {
-  // Initial work to connect DB and sync user on component mount
-  // useEffect(() => {
-  //   async function initialize() {
-  //     await connectDB();
-  //     await syncUser()
-  //       .then((createdUser) => {
-  //         console.log("User synced: ", createdUser);
-  //       })
-  //       .catch((err) => console.log("Couldnt find created User"));
-  //   }
-  //   initialize();
-  // }, []);
+export default function Dashboard() {
+  const { user: clerkUser, isLoaded } = useUser();
 
-  const intervals = ["5m", "D1", "D2", "D4", "D7", "D15", "D30"];
+  const user = {
+    username: "DevPro_01",
+    currentMojo: 125,
+    status: "The Grinder",
+    rewardTime: -6000,
+    wallRank: "#2",
+    studiedToday: 5520000,
+  };
 
-  // State to manage the time warp for testing
-  const [timeOffset, setTimeOffset] = useState(0);
-  const currentSimulatedTime = Date.now() + timeOffset;
+  // --- Timer State Logic ---
+  const [durationMinutes, setDurationMinutes] = useState(60);
+  const [timeLeft, setTimeLeft] = useState(60 * 60 * 1000);
+  const [isRunning, setIsRunning] = useState(false);
+  const [sessionStartTime, setSessionStartTime] = useState(null);
+  const timerRef = useRef(null);
 
-  // Mock initial data
-  const [topics, setTopics] = useState([
-    {
-      id: 1,
-      name: "React State Management",
-      deadline: Date.now() + 1000 * 60 * 30, // Due in 30 mins
-      slots: [true, true, true, true, true, true, null],
-    },
-    {
-      id: 2,
-      name: "MongoDB Indexing",
-      deadline: Date.now() - 1000 * 60 * 10, // MISSED 10 mins ago
-      slots: [true, false, false, null, null, null, null],
-    },
-    {
-      id: 3,
-      name: "Neo-Brutalist Layouts",
-      deadline: Date.now() + 1000 * 60 * 60 * 24, // Due tomorrow
-      slots: [false, null, null, null, null, null, null],
-    },
-    {
-      id: 4,
-      name: "Deployment",
-      deadline: Date.now() + 1000 * 60 * 60 * 24, // Due tomorrow
-      slots: [false, null, null, null, null, null, null],
-    },
-  ]);
+  // Sync user to MongoDB on component mount - only when user is authenticated
+  useEffect(() => {
+    if (isLoaded && clerkUser?.id) {
+      syncUser(clerkUser.id);
+    }
+  }, [isLoaded, clerkUser?.id]);
 
-  // Process data based on SIMULATED time
-  const getProcessedData = () => {
-    return topics.map((topic) => {
-      const isPastDue = currentSimulatedTime > topic.deadline;
+  useEffect(() => {
+    if (!isRunning) {
+      setTimeLeft(durationMinutes * 60 * 1000);
+    }
+  }, [durationMinutes]);
 
-      const processedSlots = topic.slots.map((s) => {
-        // If deadline passed and it wasn't finished (true), it is forcefully marked 'missed'
-        if (isPastDue && s !== true) return "missed";
-        return s;
+  useEffect(() => {
+    if (isRunning) {
+      timerRef.current = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1000) {
+            clearInterval(timerRef.current);
+            setIsRunning(false);
+            return 0;
+          }
+          return prev - 1000;
+        });
+      }, 1000);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isRunning]);
+
+  const toggleTimer = async () => {
+    setIsRunning((prev) => !prev);
+
+    if (!isRunning) {
+      // Starting session
+      setSessionStartTime(Date.now());
+      await startSession({
+        userId: clerkUser?.id,
+        duration: durationMinutes * 60 * 1000,
+        remainingTime: durationMinutes * 60 * 1000,
       });
+    }
 
-      const hasMissed = processedSlots.some((s) => s === "missed");
-
-      return {
-        ...topic,
-        processedSlots,
-        isGuillotined: isPastDue && hasMissed,
-        isLocked: isPastDue,
-      };
-    });
+    if (isRunning && sessionStartTime) {
+      // Pausing session
+      await pauseSession({
+        userId: clerkUser?.id,
+        lra: sessionStartTime,
+      });
+    }
   };
 
-  const handleToggle = (topicId, slotIndex) => {
-    setTopics((prev) =>
-      prev.map((t) => {
-        // Logic: Cannot edit if the global deadline for the row has passed
-        if (t.id !== topicId || currentSimulatedTime > t.deadline) return t;
-
-        const newSlots = [...t.slots];
-        // Toggle between Complete (true) and Pending (false/null)
-        newSlots[slotIndex] = newSlots[slotIndex] === true ? false : true;
-
-        return { ...t, slots: newSlots };
-      }),
-    );
+  const resetTimer = () => {
+    setIsRunning(false);
+    setTimeLeft(durationMinutes * 60 * 1000);
   };
 
-  const data = getProcessedData();
+  const formatTimerDisplay = (ms) => {
+    const totalSeconds = Math.ceil(ms / 1000);
+    const hrs = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+
+    return `${hrs.toString().padStart(2, "0")}:${mins
+      .toString()
+      .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  // --- End Timer Logic ---
+
+  let modStudyTime = user.studiedToday / 60000;
+  let result = "0";
+  let penalty = "0";
+
+  function calculateModStudyTime(time) {
+    const decimal = time / 60;
+    let arr = decimal.toLocaleString().split(".");
+    const hours = arr[0];
+    const minutes = arr[1] ? (parseFloat(`0.${arr[1]}`) * 60).toFixed() : "0";
+    return `${hours}h ${minutes}m`;
+  }
+
+  result = calculateModStudyTime(modStudyTime);
+  penalty = calculateModStudyTime(user.rewardTime / 60000);
+
+  const [mascot, setMascot] = useState("/mascot/chiller.jpg");
+  const isPenalty = user.rewardTime < 0;
+
+  useEffect(() => {
+    if (user.studiedToday >= 3600000) setMascot("/mascot/chiller.jpg");
+    if (user.studiedToday >= 3600000 * 2) setMascot("/mascot/sleeper.jpg");
+    if (user.studiedToday < 3600000 && user.studiedToday > 0)
+      setMascot("/mascot/chiller.jpg");
+    if (isPenalty) setMascot("/mascot/bankrupt.jpg");
+    if (user.wallRank === "#1") setMascot("/mascot/king.jpg");
+  }, [isPenalty, user.studiedToday, user.wallRank]);
+
+  const navItems = [
+    { icon: Dice5, label: "SLOTS" },
+    { icon: Flame, label: "SHAME" },
+    { icon: Vault, label: "VAULT" },
+  ];
 
   return (
-    <div className="min-h-screen bg-[#F0F0F0] font-mono text-black p-4 pb-24">
-      {/* Simulation Banner */}
-      {timeOffset !== 0 && (
-        <div className="bg-black text-[#FFFF00] text-[10px] p-1.5 text-center font-black uppercase mb-3 border-b-4 border-black">
-          ⚠️ TIME WARP: {timeOffset > 0 ? "+" : ""}
-          {Math.round(timeOffset / 60000)}m Offset Active
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="flex gap-3 mb-6">
-        <button className="border-4 border-black bg-white p-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all">
-          <ArrowLeft size={24} strokeWidth={3} />
-        </button>
-        <div className="flex-1 border-4 border-black bg-[#FFFF00] p-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-black uppercase italic leading-none">
-              The Grid
-            </h1>
-            <p className="text-[10px] font-bold uppercase mt-1">
-              Revision Slots
+    <div className="min-h-screen bg-[#F0F0F0] font-mono text-black pb-28">
+      <div className="p-4 max-w-xl mx-auto">
+        {/* Top Bar */}
+        <div className="flex gap-4 mb-4">
+          {user ? <UserButton /> : null}
+          <SignInButton mode="modal" />
+          <div className="flex-1 border-4 border-black bg-white p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            <p className="text-xs uppercase font-bold text-gray-500">
+              {isPenalty ? "Penalty" : "Rewards"}
             </p>
+            <div className="flex items-center gap-2 mt-1">
+              <Trophy
+                size={18}
+                strokeWidth={3}
+                className={isPenalty ? "text-red-600" : "text-green-600"}
+              />
+              <h1
+                className={`text-xl font-black ${isPenalty ? "text-red-600" : "text-green-600"}`}
+              >
+                {penalty}
+              </h1>
+            </div>
           </div>
-          <div className="text-right">
-            <p className="text-[10px] font-black opacity-50 uppercase">
-              Simulated Time
-            </p>
-            <p className="text-sm font-black tabular-nums">
-              {new Date(currentSimulatedTime).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </p>
+
+          <div className="flex-1 border-4 border-black bg-[#FFFF00] p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            <p className="text-xs uppercase font-bold">Time Studied</p>
+            <div className="flex items-center gap-2 mt-1">
+              <Timer size={18} strokeWidth={3} />
+              <h1 className="text-xl font-black">{result}</h1>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Table Grid */}
-      <div className="border-4 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-        <div className="overflow-x-auto scrollbar-hide">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-black text-white">
-                <th className="p-4 text-left sticky left-0 bg-black z-20 min-w-40 text-xs uppercase italic border-r border-white/20">
-                  Topic
-                </th>
-                {intervals.map((int) => (
-                  <th
-                    key={int}
-                    className="p-4 text-center text-[10px] font-black border-l border-white/10"
-                  >
-                    {int}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((row) => (
-                <tr
-                  key={row.id}
-                  className={`border-b-4 border-black transition-colors ${row.isGuillotined ? "bg-gray-100" : "bg-white"}`}
+        {/* NEO-BRUTALIST TIMER COMPONENT */}
+        <div className="border-4 border-black bg-[#00FF00] p-6 mb-4 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h2 className="text-sm font-black uppercase tracking-wider bg-black text-white px-2 py-0.5 inline-block">
+                Session Control
+              </h2>
+              <p className="text-[11px] font-bold uppercase mt-1 text-black/80">
+                Range: 15 mins to 6 hours
+              </p>
+            </div>
+            <div className="text-3xl font-black tracking-tight bg-white border-2 border-black px-3 py-1 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+              {formatTimerDisplay(timeLeft)}
+            </div>
+          </div>
+
+          {/* Configuration Input Controls */}
+          <div className="bg-white border-4 border-black p-3 mb-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            <label className="block text-xs font-black uppercase mb-1">
+              Set Duration: {Math.floor(durationMinutes / 60)}h{" "}
+              {durationMinutes % 60}m
+            </label>
+            <input
+              type="range"
+              min="15"
+              max="360"
+              step="15"
+              value={durationMinutes}
+              disabled={isRunning}
+              onChange={(e) => setDurationMinutes(parseInt(e.target.value))}
+              className="w-full accent-black cursor-pointer focus:outline-none focus-visible:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+          </div>
+
+          {/* Interactive Button Elements */}
+          <div className="flex gap-3">
+            <button
+              onClick={toggleTimer}
+              className={`flex-1 border-4 border-black p-3 font-black text-sm uppercase flex items-center justify-center gap-2 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none ${
+                isRunning
+                  ? "bg-[#FF2D2D] text-white"
+                  : "bg-white text-black hover:bg-neutral-100"
+              }`}
+            >
+              {isRunning ? (
+                <>
+                  <Pause size={16} strokeWidth={3} /> Pause
+                </>
+              ) : (
+                <>
+                  <Play size={16} strokeWidth={3} /> Start Session
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={resetTimer}
+              className="border-4 border-black bg-white p-3 font-black text-sm uppercase flex items-center justify-center aspect-square shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none hover:bg-neutral-100"
+              title="Reset Timer"
+            >
+              <RotateCcw size={16} strokeWidth={3} />
+            </button>
+          </div>
+        </div>
+
+        {/* Mascot Area */}
+        <div className="border-4 border-black bg-white mb-4 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center justify-center p-8 relative overflow-hidden">
+          <div className="absolute top-4 right-4 bg-black text-white px-3 py-1 text-xs font-bold uppercase tracking-widest">
+            {user.status}
+          </div>
+
+          <div className="w-48 h-48 bg-[#0000FF]/10 flex items-center justify-center mb-4">
+            <img
+              src={mascot}
+              alt="Mascot status representation"
+              className="aspect-square"
+              fetchPriority="high"
+            />
+          </div>
+
+          {/* Wall Of Shame Ranking */}
+          <div className="w-full border-4 border-black bg-[#FF2D2D] p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-white">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-base font-black uppercase">
+                  Wall Of Shame
+                </h2>
+                <p className="text-[10px] opacity-90 uppercase tracking-wide">
+                  Slack again and your rank climbs higher.
+                </p>
+              </div>
+              <div className="text-4xl font-black tracking-tighter">
+                {user.wallRank}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sticky Navigation */}
+        <div className="fixed bottom-0 left-0 right-0 bg-[#F0F0F0] border-t-4 border-black px-3 py-2 z-50">
+          <div className="grid grid-cols-3 gap-3 max-w-lg mx-auto">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.label}
+                  className="bg-[#EDEDED] border-[5px] border-black h-24 flex flex-col items-center justify-center shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none active:translate-x-2 active:translate-y-2 transition-all"
                 >
-                  {/* Topic Sticky Column */}
-                  <td
-                    className={`p-4 sticky left-0 z-10 border-r-4 border-black ${row.isGuillotined ? "bg-gray-200" : "bg-white"}`}
-                  >
-                    <p
-                      className={`font-black text-sm uppercase truncate w-32 ${row.isGuillotined ? "line-through opacity-50" : ""}`}
-                    >
-                      {row.name}
-                    </p>
-                    <div
-                      className={`text-[9px] font-black mt-1 flex items-center gap-1 ${row.isLocked && row.slots.includes(null) ? "text-red-600" : "text-blue-600"}`}
-                    >
-                      {row.isLocked && row.slots.every((s) => s === null) ? (
-                        <AlertTriangle size={10} />
-                      ) : (
-                        <Clock size={10} />
-                      )}
-                      {row.isLocked && row.slots.includes(null)
-                        ? "GUILLOTINE STRUCK"
-                        : row.isLocked && row.slots.every((s) => s === true)
-                          ? "Completed"
-                          : "Pending"}
-                          {/* TODO: Potential Bug */}
-                    </div>
-                  </td>
-
-                  {/* Slot Interactive Buttons */}
-                  {row.processedSlots.map((status, idx) => (
-                    <td
-                      key={idx}
-                      className="p-2 border-l-2 border-black/5 text-center"
-                    >
-                      <button
-                        disabled={row.isLocked}
-                        onClick={() => handleToggle(row.id, idx)}
-                        className={`
-                          w-12 h-12 mx-auto flex items-center justify-center border-4 border-black transition-all relative overflow-hidden
-                          ${status === true ? "bg-[#00FF00] hover:bg-[#00FF00] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]" : "bg-white"}
-                          ${status === "missed" ? "bg-red-600 shadow-inner" : ""}
-                          ${!row.isLocked ? "hover:bg-yellow-50 active:shadow-none active:translate-x-0.5 active:translate-y-0.5" : "cursor-not-allowed"}
-                        `}
-                      >
-                        {/* Completed State */}
-                        {status === true && (
-                          <Zap size={22} fill="black" strokeWidth={1} />
-                        )}
-
-                        {/* Missed State (Vibrant Red with X) */}
-                        {status === "missed" && (
-                          <>
-                            <div className="absolute inset-0 bg-red-600" />
-                            <X
-                              size={28}
-                              className="text-white relative z-10 animate-pulse"
-                              strokeWidth={5}
-                            />
-                          </>
-                        )}
-
-                        {/* Pending State */}
-                        {(status === false || status === null) &&
-                          !row.isLocked && (
-                            <div className="w-2 h-2 rounded-full bg-black/10" />
-                          )}
-                      </button>
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  <Icon size={34} strokeWidth={3.2} className="mb-1" />
+                  <div className="text-lg font-black tracking-tight leading-none">
+                    {item.label}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
-
-      {/* Test Controls */}
-      <div className="mt-4 flex gap-2">
-        <button
-          className="flex-1 border-4 border-black bg-red-600 text-white font-black py-2 uppercase shadow-[4px_4px_0_0_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all text-xs"
-          onClick={() => setTimeOffset((prev) => prev + 1000 * 60 * 31)}
-        >
-          Jump +31 Mins (Trigger Strike)
-        </button>
-        <button
-          className="border-4 border-black bg-white font-black px-4 py-2 uppercase shadow-[4px_4px_0_0_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all text-xs"
-          onClick={() => setTimeOffset(0)}
-        >
-          Reset
-        </button>
-      </div>
-
-      {/* Legend & Stats */}
-      <div className="mt-8 grid grid-cols-3 gap-3">
-        <div className="border-4 border-black p-3 bg-[#00FF00] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center">
-          <Zap size={20} fill="black" />
-          <span className="text-[10px] font-black mt-1">+15 MOJO</span>
-        </div>
-        <div className="border-4 border-black p-3 bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center opacity-40">
-          <div className="w-5 h-5 border-2 border-black border-dashed rounded-full" />
-          <span className="text-[10px] font-black mt-1 text-center">
-            PENDING
-          </span>
-        </div>
-        <div className="border-4 border-black p-3 bg-red-600 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center text-white">
-          <X size={20} strokeWidth={4} />
-          <span className="text-[10px] font-black mt-1">-45 MOJO</span>
-        </div>
-      </div>
-
-      {/* Bottom Sticky Note */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] bg-black text-white p-3 border-4 border-white shadow-[0_0_20px_rgba(255,0,0,0.3)] z-50">
-        <p className="text-[10px] font-black text-center uppercase tracking-widest leading-tight">
-          Penalty Ratio: 3x <br />
-          <span className="text-[#FFFF00]">
-            Mojo is fragile. The Guillotine is absolute.
-          </span>
-        </p>
       </div>
     </div>
   );
-};
-
-export default SlotsPage;
+}
